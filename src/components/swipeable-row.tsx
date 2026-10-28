@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import ReanimatedSwipeable, {
   SwipeDirection,
   type SwipeableMethods,
@@ -67,8 +68,11 @@ export type SwipeableMediaRowProps = {
   /** Called with the configured action once a swipe passes the threshold. "Delete" must be confirmed by the caller. */
   onAction: (action: SwipeAction) => void;
   children: ReactNode;
-  /** Disable gestures (e.g. guest mode, entry being saved). */
-  enabled?: boolean;
+  /**
+   * Disable gestures (e.g. guest mode, entry being saved). A shared value lets the parent list
+   * switch swipes off while it scrolls without re-rendering every row.
+   */
+  enabled?: boolean | SharedValue<boolean>;
   /** Distance to trigger (default 80). */
   threshold?: number;
   testID?: string;
@@ -89,6 +93,9 @@ export function SwipeableMediaRow({ mediaType, onAction, children, enabled = tru
       ref={ref}
       enabled={enabled}
       friction={1.6}
+      // Require clear horizontal intent so a slightly diagonal scroll doesn't open the row.
+      dragOffsetFromLeft={DRAG_OFFSET}
+      dragOffsetFromRight={-DRAG_OFFSET}
       leftThreshold={threshold}
       rightThreshold={threshold}
       overshootLeft={false}
@@ -109,6 +116,8 @@ export function SwipeableMediaRow({ mediaType, onAction, children, enabled = tru
     </ReanimatedSwipeable>
   );
 }
+
+const DRAG_OFFSET = 24;
 
 const styles = StyleSheet.create({
   panel: { height: '100%', alignItems: 'center', justifyContent: 'center', gap: 2 },
