@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#000000",
     "ios": {
-      "bundleIdentifier": "com.xibrox.qaraq"
+      "bundleIdentifier": "com.xibrox.qaraq",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -89,6 +92,14 @@
             ]
           }
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "-keep class * extends androidx.room.RoomDatabase { <init>(); }\n-keep class androidx.work.impl.** { *; }"
+          }
+        }
       ]
     ],
     "experiments": {
@@ -96,7 +107,16 @@
       "reactCompiler": true
     },
     "extra": {
-      "anilistClientId": "54884"
-    }
+      "anilistClientId": "54884",
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "3178e0cd-ea22-4e72-bb27-1fa0cc068c8c"
+      }
+    },
+    "owner": "xibrox"
   }
 }

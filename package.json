@@ -10,6 +10,7 @@
     "expo": "~58.0.19",
     "expo-auth-session": "~58.0.14",
     "expo-background-task": "~58.0.11",
+    "expo-build-properties": "~58.0.11",
     "expo-clipboard": "~58.0.4",
     "expo-constants": "~58.0.13",
     "expo-device": "~58.0.5",
