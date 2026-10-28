@@ -26,11 +26,11 @@
       "versions": [
         {
           "version": "1.0.0",
-          "buildVersion": "2",
+          "buildVersion": "3",
           "date": "2026-10-28",
           "localizedDescription": "Nightly build from main.",
           "downloadURL": "https://github.com/xibrox/Qaraq/releases/download/latest/Qaraq.ipa",
-          "size": 16572197,
+          "size": 16571895,
           "minOSVersion": "16.4"
         }
       ]
