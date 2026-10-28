@@ -1,4 +1,4 @@
-# Same shape as Shirox's nightly: every push to main rebuilds the IPA and APK into the "latest" release.
+# Every push to main rebuilds the IPA and APK into the "latest" release.
 
 name: Build and upload nightly
 
@@ -85,7 +85,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # The same number goes into apps.json below; AltStore checks the two match.
       - name: Build iOS IPA
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
         run: ./scripts/build-ipa.sh
 
       - name: Upload IPA

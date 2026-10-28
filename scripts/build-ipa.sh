@@ -39,6 +39,10 @@ echo "--- Packaging IPA ---"
 mkdir "$BUILD/Payload"
 cp -R "$APP" "$BUILD/Payload/"
 rm -rf "$BUILD/Payload/$APPLICATION_NAME.app/_CodeSignature" "$BUILD/Payload/$APPLICATION_NAME.app/embedded.mobileprovision"
+# AltStore refuses the install unless CFBundleVersion matches apps.json's buildVersion (the CI run number).
+if [ -n "$BUILD_NUMBER" ]; then
+   /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$BUILD/Payload/$APPLICATION_NAME.app/Info.plist"
+fi
 (cd "$BUILD" && zip -qr "$APPLICATION_NAME.ipa" Payload)
 rm -rf "$BUILD/Payload"
 
