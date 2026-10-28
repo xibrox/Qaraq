@@ -1,0 +1,188 @@
+# Same shape as Shirox's nightly: every push to main rebuilds the IPA and APK into the "latest" release.
+
+name: Build and upload nightly
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RELEASE_TAG: latest
+  # Below 1.4.0, matching local development.
+  BUN_VERSION: 1.3.14
+
+jobs:
+  check:
+    name: Typecheck, lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Lint
+        run: bunx expo lint
+
+      - name: Test
+        run: bun test
+
+  prepare-release:
+    name: Prepare release
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The tag follows main, so the release's source is the commit its builds came from.
+      - name: Move the release tag to this commit
+        run: |
+          git tag -f "$RELEASE_TAG"
+          git push -f origin "refs/tags/$RELEASE_TAG"
+
+      # Made once here, before the builds, which upload to it side by side.
+      - name: Create the release if it's missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" --verify-tag --title "Qaraq" --notes "Building…" --latest
+
+  build-ios:
+    name: Build iOS IPA
+    needs: prepare-release
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build iOS IPA
+        run: ./scripts/build-ipa.sh
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Qaraq-Nightly-IPA
+          path: build/Qaraq.ipa
+
+      - name: Upload IPA to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" build/Qaraq.ipa --clobber
+
+      - name: Update apps.json
+        run: |
+          IPA_SIZE=$(wc -c < build/Qaraq.ipa | tr -d ' ')
+          BUILD_DATE=$(date -u +%Y-%m-%d)
+          VERSION=$(jq -r '.expo.version' app.json)
+          jq --argjson size "$IPA_SIZE" --arg date "$BUILD_DATE" --arg version "$VERSION" --arg build "$GITHUB_RUN_NUMBER" \
+            '.apps[0].versions[0].size = $size | .apps[0].versions[0].date = $date
+             | .apps[0].versions[0].version = $version | .apps[0].versions[0].buildVersion = $build' \
+            apps.json > apps.json.tmp && mv apps.json.tmp apps.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps.json
+          git diff --cached --quiet || (git commit -m "chore: update apps.json [skip ci]" && git pull --rebase origin main && git push origin HEAD:main)
+
+  build-android:
+    name: Build Android APK
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Set up Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: zulu
+          java-version: 17
+          cache: gradle
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Without these secrets the APK keeps Gradle's debug signature (see scripts/build-apk.sh).
+      - name: Build Android APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./scripts/build-apk.sh
+
+      - name: Upload APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Qaraq-Nightly-APK
+          path: build/Qaraq.apk
+
+      - name: Upload APK to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" build/Qaraq.apk --clobber
+
+  publish-release:
+    name: Publish release
+    needs: [build-ios, build-android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Name and publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(jq -r '.expo.version' app.json)
+          {
+            echo "Nightly build of \`${GITHUB_SHA::7}\`."
+            echo
+            echo "**Downloads:** Qaraq.ipa (iPhone, unsigned: sideload with AltStore, SideStore or Sideloadly), Qaraq.apk (Android)."
+            echo
+            echo "AltStore / SideStore source: \`https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/apps.json\`"
+          } > notes.md
+          gh release edit "$RELEASE_TAG" \
+            --title "Qaraq $VERSION ($GITHUB_RUN_NUMBER)" \
+            --notes-file notes.md \
+            --prerelease=false \
+            --draft=false \
+            --latest

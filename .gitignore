@@ -42,3 +42,7 @@ example
 /ios
 /android
 reference/
+
+# local build outputs (scripts/build-*.sh)
+/build/
+*.keystore
