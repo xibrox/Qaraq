@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Keyboard, Platform, RefreshControl, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MediaType } from '@/api/types';
@@ -59,11 +58,6 @@ export function MyListScreen() {
   const actions = useEntryActions(type, list.customNames.length);
   const header = useFloatingHeader();
   const now = useNow();
-  // The list is a native scroll view, so the rows' pan gestures don't yield to it; switch them
-  // off from the moment a drag starts until the scroll (including momentum) settles.
-  const swipeEnabled = useSharedValue(true);
-  const lockSwipes = () => swipeEnabled.set(false);
-  const unlockSwipes = () => swipeEnabled.set(true);
 
   const { query } = list;
   // Resign the search field before pushing, or UIKit re-focuses it when the screen pops back.
@@ -184,10 +178,6 @@ export function MyListScreen() {
           key="list"
           {...common}
           contentContainerStyle={[styles.listContent, { paddingTop: topPad }]}
-          onScrollBeginDrag={lockSwipes}
-          onScrollEndDrag={unlockSwipes}
-          onMomentumScrollBegin={lockSwipes}
-          onMomentumScrollEnd={unlockSwipes}
           renderItem={({ item }) => (
             <EntryRow
               entry={item}
@@ -198,7 +188,6 @@ export function MyListScreen() {
               onOpen={openMedia}
               onQuickEdit={quickEdit}
               onSwipe={actions.run}
-              swipeEnabled={swipeEnabled}
             />
           )}
         />
