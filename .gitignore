@@ -46,3 +46,35 @@ reference/
 # local build outputs (scripts/build-*.sh)
 /build/
 *.keystore
+
+# secrets & signing
+.env
+.env.*
+!.env.example
+*.cer
+*.certSigningRequest
+*.p7b
+credentials.json
+google-services.json
+GoogleService-Info.plist
+service-account*.json
+
+# build artifacts
+*.ipa
+*.apk
+*.aab
+*.dSYM.zip
+
+# AI / agent tooling
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+.cursor/
+.cursorrules
+.windsurfrules
+.aider*
+.codex/
+.gemini/
+GEMINI.md
+.github/copilot-instructions.md
