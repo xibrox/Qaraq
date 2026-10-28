@@ -1,10 +1,10 @@
 {
   "name": "Qaraq",
   "identifier": "com.xibrox.qaraq.altstore",
-  "sourceURL": "https://raw.githubusercontent.com/xibrox/qaraq/main/apps.json",
+  "sourceURL": "https://raw.githubusercontent.com/xibrox/Qaraq/main/apps.json",
   "subtitle": "AniList client for iOS and Android",
   "description": "Qaraq is an AniList client: your anime and manga lists, explore and search, activity, favourites and stats.",
-  "website": "https://github.com/xibrox/qaraq",
+  "website": "https://github.com/xibrox/Qaraq",
   "featuredApps": [
     "com.xibrox.qaraq"
   ],
@@ -15,7 +15,7 @@
       "developerName": "xibrox",
       "subtitle": "AniList client",
       "localizedDescription": "Qaraq is an AniList client.\n\n• My List with Watching, Rewatching, Completed, Paused, Planning, Dropped and custom lists\n• Swipe gestures to bump progress or edit entries\n• Explore and search anime and manga\n• Activity feeds, notifications, favourites and stats\n• Themes, accent colours and Liquid Glass on iOS 26",
-      "iconURL": "https://raw.githubusercontent.com/xibrox/qaraq/main/assets/images/icon.png",
+      "iconURL": "https://raw.githubusercontent.com/xibrox/Qaraq/main/assets/images/icon.png",
       "tintColor": "ffffff",
       "category": "entertainment",
       "screenshots": [],
@@ -29,7 +29,7 @@
           "buildVersion": "1",
           "date": "2026-10-28",
           "localizedDescription": "Nightly build from main.",
-          "downloadURL": "https://github.com/xibrox/qaraq/releases/download/latest/Qaraq.ipa",
+          "downloadURL": "https://github.com/xibrox/Qaraq/releases/download/latest/Qaraq.ipa",
           "size": 0,
           "minOSVersion": "16.4"
         }
