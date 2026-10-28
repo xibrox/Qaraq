@@ -51,8 +51,9 @@ export function buildStackScreenOptions(
 
   switch (appearance) {
     case 'liquidGlass':
-      // iOS 26: leaving the background unset gives the system glass bar.
-      return { ...base, headerTransparent: true };
+      // iOS 26: leaving the background unset gives a bar with no fill of its own, only glass
+      // items; content scrolling under it fades out softly (as Shirox's Library).
+      return { ...base, headerTransparent: true, scrollEdgeEffects: { top: 'soft' } };
     case 'translucent':
       if (Platform.OS === 'ios') {
         return {

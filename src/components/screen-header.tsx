@@ -3,10 +3,11 @@ import { StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyl
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useToolbarAppearance } from '@/navigation/toolbar-appearance';
-import { useTheme } from '@/theme';
+import { useTheme, withAlpha } from '@/theme';
 
 import { AppText } from './app-text';
-import { GlassSurface } from './glass-surface';
+
+const TITLE_ROW_HEIGHT = 44;
 
 export type ScreenHeaderProps = {
   /** Centered nav title ("Anime List", "Explore Manga"). */
@@ -18,7 +19,7 @@ export type ScreenHeaderProps = {
   /** Rows under the title: HeaderToolbar, StatusChipRow, info row, ProgressLine... */
   children?: ReactNode;
   /**
-   * Float over content (absolute, content scrolls under the glass). Pair with
+   * Float over content (absolute, content scrolls under the soft edge). Pair with
    * `useFloatingHeader()` to pad the scroll content. Default false (in-flow).
    */
   floating?: boolean;
@@ -32,8 +33,10 @@ export type ScreenHeaderProps = {
 /**
  * Custom tab-root header used by screens whose AniClient header is more than a nav bar
  * (My List, Explore): centered title + toolbar rows. Hide the native header for those screens
- * (`<Stack.Screen options={{ headerShown: false }} />`). The background follows Toolbar Style:
- * Liquid Glass, translucent, or the solid background (the AniClient look).
+ * (`<Stack.Screen options={{ headerShown: false }} />`). The header itself is never glass, only
+ * its controls (search field, switch, buttons) are. With Toolbar Style Solid it sits on the solid
+ * background (the AniClient look); otherwise content fades out softly under it, like the iOS 26
+ * soft scroll edge.
  */
 export function ScreenHeader({
   title,
@@ -48,8 +51,13 @@ export function ScreenHeader({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const appearance = useToolbarAppearance();
+  const [height, setHeight] = useState(0);
 
-  const onLayout = (e: LayoutChangeEvent) => onHeightChange?.(Math.round(e.nativeEvent.layout.height));
+  const onLayout = (e: LayoutChangeEvent) => {
+    const h = Math.round(e.nativeEvent.layout.height);
+    setHeight(h);
+    onHeightChange?.(h);
+  };
 
   const inner = (
     <View style={{ paddingTop: safeAreaTop ? insets.top : 0, paddingBottom: 8 }}>
@@ -79,9 +87,18 @@ export function ScreenHeader({
       </View>
     );
   }
+  // Opaque behind the status bar and title, then easing out across the control rows, so rows
+  // scrolling under the header dissolve instead of meeting a hard line. It stops at the header's
+  // bottom edge: reaching past it laid a band over the resting content that read as a shadow.
+  const bg = theme.colors.background;
+  const solidUntil = height > 0 ? ((safeAreaTop ? insets.top : 0) + TITLE_ROW_HEIGHT) / height : 0;
+  const pct = (f: number) => `${(Math.min(1, f) * 100).toFixed(1)}%`;
+  const fade = `linear-gradient(to bottom, ${bg} 0%, ${bg} ${pct(solidUntil)}, ${withAlpha(bg, 0)} 100%)`;
   return (
     <View onLayout={onLayout} style={container}>
-      <GlassSurface radius={0} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      {height > 0 ? (
+        <View pointerEvents="none" style={[styles.fade, { height, backgroundImage: fade }]} />
+      ) : null}
       {inner}
     </View>
   );
@@ -104,7 +121,8 @@ export function useFloatingHeader() {
 
 const styles = StyleSheet.create({
   floating: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-  titleRow: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
+  fade: { position: 'absolute', top: 0, left: 0, right: 0 },
+  titleRow: { height: TITLE_ROW_HEIGHT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
   side: { width: 88, flexDirection: 'row', alignItems: 'center' },
   sideLeft: { justifyContent: 'flex-start' },
   sideRight: { justifyContent: 'flex-end' },
