@@ -1,5 +1,6 @@
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { GlassSurface } from '@/components/glass-surface';
 import { Icon, type IconName } from '@/components/icon';
 import { useTheme } from '@/theme';
 
@@ -19,11 +20,13 @@ export function SortDirectionButton({ direction, onPress }: { direction: 'asc' |
       hitSlop={4}
       accessibilityRole="button"
       accessibilityLabel={direction === 'desc' ? 'Descending, switch to ascending' : 'Ascending, switch to descending'}
-      style={({ pressed }) => [styles.button, { opacity: pressed ? 0.6 : 1 }]}>
-      <View style={styles.direction}>
-        <Icon name={BARS} size={15} color={c.text} />
-        <Icon name={direction === 'desc' ? ARROW_DOWN : ARROW_UP} size={13} color={c.text} weight="bold" />
-      </View>
+      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+      <GlassSurface radius="pill" interactive fallbackColor={c.chipFill} style={styles.button}>
+        <View style={styles.direction}>
+          <Icon name={BARS} size={15} color={c.text} />
+          <Icon name={direction === 'desc' ? ARROW_DOWN : ARROW_UP} size={13} color={c.text} weight="bold" />
+        </View>
+      </GlassSurface>
     </Pressable>
   );
 }
@@ -40,11 +43,13 @@ export function ClearFiltersButton({ disabled, onPress }: { disabled?: boolean; 
       accessibilityRole="button"
       accessibilityLabel="Clear filters"
       accessibilityState={{ disabled }}
-      style={({ pressed }) => [styles.button, { opacity: disabled ? 0.4 : pressed ? 0.6 : 1 }]}>
-      <Icon name={FILTER} size={19} color={c.text} />
-      {Platform.OS === 'ios' ? (
-        <View pointerEvents="none" style={[styles.slash, { backgroundColor: c.text, borderColor: c.background }]} />
-      ) : null}
+      style={({ pressed }) => ({ opacity: disabled ? 0.4 : pressed ? 0.6 : 1 })}>
+      <GlassSurface radius="pill" interactive fallbackColor={c.chipFill} style={styles.button}>
+        <Icon name={FILTER} size={19} color={c.text} />
+        {Platform.OS === 'ios' ? (
+          <View pointerEvents="none" style={[styles.slash, { backgroundColor: c.text, borderColor: c.chipFill }]} />
+        ) : null}
+      </GlassSurface>
     </Pressable>
   );
 }

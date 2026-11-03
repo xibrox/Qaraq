@@ -1,9 +1,11 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent, type ScrollViewInstance, type StyleProp, type ViewStyle } from 'react-native';
 
 import { haptics } from '@/lib/haptics';
 
 import { Chip } from './chip';
+import { type IconName } from './icon';
+import { IconButton } from './icon-button';
 
 export type ChipItem<K extends string = string> = {
   key: K;
@@ -16,8 +18,8 @@ export type StatusChipRowProps<K extends string> = {
   onSelect: (key: K) => void;
   /** Long-press on a chip (e.g. custom list options). */
   onLongPress?: (key: K) => void;
-  /** Trailing node after the last chip (AniClient's circular ⇄ button). */
-  trailing?: ReactNode;
+  /** Circular icon button after the last chip (AniClient's ⇄, which opens the reorder sheet). */
+  trailingAction?: { icon: IconName; accessibilityLabel: string; onPress: () => void };
   contentInset?: number;
   style?: StyleProp<ViewStyle>;
 };
@@ -31,7 +33,7 @@ export function StatusChipRow<K extends string>({
   selectedKey,
   onSelect,
   onLongPress,
-  trailing,
+  trailingAction,
   contentInset = 12,
   style,
 }: StatusChipRowProps<K>) {
@@ -81,7 +83,16 @@ export function StatusChipRow<K extends string>({
           />
         </View>
       ))}
-      {trailing}
+      {trailingAction ? (
+        <IconButton
+          icon={trailingAction.icon}
+          variant="glass"
+          size={36}
+          iconSize={16}
+          accessibilityLabel={trailingAction.accessibilityLabel}
+          onPress={trailingAction.onPress}
+        />
+      ) : null}
     </ScrollView>
   );
 }

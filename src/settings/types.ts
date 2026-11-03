@@ -64,8 +64,11 @@ export type HapticsSetting = {
   intensity: HapticIntensity;
 };
 
-/** Row swipe actions ("Increase Episode" / "Increase Chapter", "Custom List", "Delete"). */
-export type SwipeAction = 'increment' | 'customList' | 'delete';
+/**
+ * Row swipe actions ("Increase Episode" / "Increase Chapter", "Increase Volume", "Custom List",
+ * "Delete"). `incrementVolume` is offered for manga only.
+ */
+export type SwipeAction = 'increment' | 'incrementVolume' | 'customList' | 'delete';
 
 /** `right` = finger moves left to right (leading actions); `left` = trailing actions. */
 export type SwipeDirection = 'right' | 'left';

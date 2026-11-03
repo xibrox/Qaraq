@@ -142,7 +142,7 @@ export function MediaListRow({
       </View>
       {trailing ??
         (onMorePress ? (
-          <IconButton icon={icons.more} variant="outlined" onPress={onMorePress} accessibilityLabel={`Edit ${title}`} />
+          <IconButton icon={icons.more} variant="glass" size={32} iconSize={15} onPress={onMorePress} accessibilityLabel={`Edit ${title}`} />
         ) : null)}
     </Pressable>
   );

@@ -36,6 +36,29 @@ export function sectionLabel(key: ListSectionKey, type: MediaType): string {
   return customSectionName(key) ?? listStatusLabel(key as ListStatusSection, type);
 }
 
+/**
+ * Moves the items at `sourceIndices` before `destination`, with SwiftUI `onMove` semantics:
+ * `destination` counts positions before the moved items are removed (so it can equal `length`).
+ */
+export function moveItems<T>(items: readonly T[], sourceIndices: readonly number[], destination: number): T[] {
+  const moving = new Set(sourceIndices);
+  const moved = items.filter((_, i) => moving.has(i));
+  const rest = items.filter((_, i) => !moving.has(i));
+  const before = sourceIndices.filter((i) => i < destination).length;
+  rest.splice(destination - before, 0, ...moved);
+  return rest;
+}
+
+/**
+ * Writes the reordered visible chips back into the full chip order: each slot that held a
+ * visible key takes the next key of `visible`, so hidden sections keep their positions.
+ */
+export function applyVisibleOrder(order: readonly ListSectionKey[], visible: readonly ListSectionKey[]): ListSectionKey[] {
+  const shown = new Set(visible);
+  let next = 0;
+  return order.map((key) => (shown.has(key) ? visible[next++]! : key));
+}
+
 /** Groups the collection's lists into chip sections (split completed lists are merged). */
 export function groupSections(data: MediaListCollectionQuery | undefined): Map<ListSectionKey, ListEntry[]> {
   const out = new Map<ListSectionKey, ListEntry[]>();
@@ -55,6 +78,23 @@ export function groupSections(data: MediaListCollectionQuery | undefined): Map<L
     }
     out.set(key, bucket);
     seen.set(key, ids);
+  }
+  return out;
+}
+
+/** Drops repeated entries (by entry id), keeping the first. */
+export function uniqueEntries(entries: readonly ListEntry[]): ListEntry[] {
+  const seen = new Set<number>();
+  return entries.filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)));
+}
+
+/** Splits one custom list into status sections by each entry's own status. */
+export function groupByStatus(entries: readonly ListEntry[]): Map<ListSectionKey, ListEntry[]> {
+  const out = new Map<ListSectionKey, ListEntry[]>();
+  for (const e of entries) {
+    if (!e.status) continue;
+    const key = e.status as ListStatusSection;
+    out.set(key, [...(out.get(key) ?? []), e]);
   }
   return out;
 }

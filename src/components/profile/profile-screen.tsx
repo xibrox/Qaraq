@@ -4,11 +4,11 @@ import { useHeaderHeight } from 'expo-router/react-navigation';
 import * as WebBrowser from 'expo-web-browser';
 import { useRef, useState, type ReactElement } from 'react';
 import { Alert, Platform, RefreshControl, Share, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
-  useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 
@@ -24,6 +24,7 @@ import { describeError, ErrorState } from '@/components/error-state';
 import { Fab } from '@/components/fab';
 import { FavoritesTab } from '@/components/favourites/favorites-tab';
 import { LoadingState } from '@/components/loading-state';
+import { CoverViewer } from '@/components/media/cover-viewer';
 import { useAndroidHeaderInset } from '@/components/people/use-content-inset';
 import { ListSkeleton } from '@/components/skeleton';
 import { StatsTab } from '@/components/stats/stats-tab';
@@ -38,7 +39,7 @@ import { AboutSheet } from './about-sheet';
 import { ActivityFeedToolbar } from './activity-feed-toolbar';
 import { ProfileHeader } from './profile-header';
 import { profileIcons } from './profile-icons';
-import { ProfileTabBar, type ProfileTab } from './profile-tab-bar';
+import { PROFILE_TAB_BAR_HEIGHT, ProfileTabBar, type ProfileTab } from './profile-tab-bar';
 import { InboxToolbar, UserToolbar } from './profile-toolbar';
 import { useProfileFeed } from './use-profile-feed';
 
@@ -82,7 +83,19 @@ export function ProfileScreen({ userId: routeUserId, isTabRoot = false }: Profil
   );
 }
 
-type Row = { kind: 'activity'; activity: Activity } | { kind: 'favorite' } | { kind: 'stats' };
+const IOS_NAV_BAR_HEIGHT = 44;
+
+/** List rows: the hero, the sticky tab row, the feed toolbar, then the selected tab's content. */
+type Row =
+  | { kind: 'hero' }
+  | { kind: 'tabs' }
+  | { kind: 'toolbar' }
+  | { kind: 'empty' }
+  | { kind: 'activity'; activity: Activity }
+  | { kind: 'favorite' }
+  | { kind: 'stats' };
+
+
 
 function ProfileContent({ userId, isOwn, isTabRoot }: { userId: number; isOwn: boolean; isTabRoot: boolean }) {
   const profile = useUserProfile({ id: userId, asHtml: true });
@@ -113,6 +126,7 @@ function ProfileBody({
   const sheets = useActivitySheets();
   const appearance = useToolbarAppearance();
   const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
   const androidInset = useAndroidHeaderInset();
 
   const defaultFeed = useSetting('defaultActivityFeed');
@@ -123,6 +137,8 @@ function ProfileBody({
   const [feed, setFeed] = useState<ActivityFeed>(isOwn ? defaultFeed : 'mine');
   const [filter, setFilter] = useState<ActivityFilter>(defaultFilter);
   const [aboutOpen, setAboutOpen] = useState(false);
+  // Banner or avatar shown full screen (pinch to zoom), like a poster on the media page.
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   const counts = useUserFollowCounts(user.id);
   const unread = useUnreadNotificationCount({ enabled: isTabRoot && isOwn });
@@ -136,29 +152,36 @@ function ProfileBody({
     enabled: tab === 'activity',
   });
 
-  // Scroll geometry. The frame starts at the top of the screen when the header is transparent.
+  // Scroll geometry.
   const transparentHeader = appearance !== 'solid';
-  const overlayTop = transparentHeader ? headerHeight : 0;
-  const restOffset = Platform.OS === 'ios' && transparentHeader ? -headerHeight : 0;
+  // iOS: the bar is the status bar plus 44pt. `useHeaderHeight` reports more here (it measured
+  // ~150pt too tall), which pinned the tab row far below the bar.
+  const barHeight = Platform.OS === 'ios' ? insets.top + IOS_NAV_BAR_HEIGHT : headerHeight;
+  // Where the tab row stops: just under a transparent bar, or the top of the screen below a solid one.
+  const overlayTop = transparentHeader ? barHeight : 0;
   const listRef = useAnimatedRef<Animated.FlatList<Row>>();
-  const scrollY = useSharedValue(restOffset);
-  const tabY = useSharedValue(Number.MAX_SAFE_INTEGER);
+  const scrollY = useSharedValue(Platform.OS === 'ios' && transparentHeader ? -barHeight : 0);
   const tabYRef = useRef(Number.MAX_SAFE_INTEGER);
-  const stretch = useDerivedValue(() => restOffset - scrollY.get());
+  const heroHeight = useSharedValue(Number.NaN);
+
+  // The one tab row is drawn above the list, so the bar's soft scroll edge doesn't blur it, and
+  // moves on the UI thread: a content point p is at p - contentOffset in the list, which fills
+  // the screen. It rides on the hero's bottom edge and stops under the bar. (A native sticky row
+  // pins to the list's top edge, behind a transparent bar.)
+  const tabRowStyle = useAnimatedStyle(() => {
+    const top = heroHeight.get();
+    if (Number.isNaN(top)) return { opacity: 0 };
+    return { opacity: 1, transform: [{ translateY: Math.max(overlayTop, top - scrollY.get()) }] };
+  });
 
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.set(e.contentOffset.y);
   });
 
-  const stickyStyle = useAnimatedStyle(() => {
-    const stuck = scrollY.get() >= tabY.get() - overlayTop;
-    return { opacity: stuck ? 1 : 0, transform: [{ translateY: stuck ? 0 : -10_000 }] };
-  });
-
-  const onTabBarLayout = (e: LayoutChangeEvent) => {
-    const y = e.nativeEvent.layout.y + androidInset;
-    tabYRef.current = y;
-    tabY.set(y);
+  // The tab row starts where the hero ends.
+  const onHeroLayout = (e: LayoutChangeEvent) => {
+    tabYRef.current = e.nativeEvent.layout.height + androidInset;
+    heroHeight.set(e.nativeEvent.layout.height + androidInset);
   };
 
   const changeTab = (next: ProfileTab) => {
@@ -220,13 +243,17 @@ function ProfileBody({
     ? `Joined ${new Date(user.createdAt * 1000).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
     : undefined;
 
-  const rows: Row[] =
-    tab === 'activity' ? activityFeed.activities.map((a) => ({ kind: 'activity', activity: a })) : [{ kind: tab }];
+  const content: Row[] =
+    tab === 'activity'
+      ? activityFeed.activities.length > 0
+        ? activityFeed.activities.map((a) => ({ kind: 'activity', activity: a }))
+        : [{ kind: 'empty' }]
+      : [{ kind: tab }];
+  const rows: Row[] = [{ kind: 'hero' }, { kind: 'tabs' }, ...(tab === 'activity' ? [{ kind: 'toolbar' } as const] : []), ...content];
 
   const tabBar = <ProfileTabBar value={tab} onChange={changeTab} />;
 
-  const listHeader = (
-    <View>
+  const hero = (
       <ProfileHeader
         user={user}
         followers={counts.data?.followers}
@@ -234,7 +261,8 @@ function ProfileBody({
         onFollowersPress={() => router.push(hrefs.follows(user.id, 'followers'))}
         onFollowingPress={() => router.push(hrefs.follows(user.id, 'following'))}
         onInfoPress={() => setAboutOpen(true)}
-        stretch={stretch}
+        onBannerPress={user.bannerImage ? () => setViewerUri(user.bannerImage) : undefined}
+        onAvatarPress={() => setViewerUri(user.avatar?.large ?? user.avatar?.medium ?? null)}
         social={
           isOwn || !viewerId
             ? undefined
@@ -247,17 +275,9 @@ function ProfileBody({
               }
         }
       />
-      <View onLayout={onTabBarLayout}>{tabBar}</View>
-      {tab === 'activity' ? (
-        <ActivityFeedToolbar
-          feed={feed}
-          onFeedChange={setFeed}
-          filter={filter}
-          onFilterChange={setFilter}
-          showFeedMenu={isOwn}
-        />
-      ) : null}
-    </View>
+  );
+  const feedToolbar = (
+    <ActivityFeedToolbar feed={feed} onFeedChange={setFeed} filter={filter} onFilterChange={setFilter} showFeedMenu={isOwn} />
   );
 
   let emptyActivity: ReactElement | undefined;
@@ -299,12 +319,24 @@ function ProfileBody({
         data={rows}
         keyExtractor={(r) => (r.kind === 'activity' ? `a-${r.activity.id}` : r.kind)}
         renderItem={({ item }) => {
-          if (item.kind === 'favorite') return <FavoritesTab userId={user.id} />;
-          if (item.kind === 'stats') return <StatsTab userId={user.id} />;
-          return <ActivityCard activity={item.activity} showAuthor={feed !== 'mine'} />;
+          switch (item.kind) {
+            case 'hero':
+              return <View onLayout={onHeroLayout}>{hero}</View>;
+            case 'tabs':
+              // Keeps the tab row's space; the row itself is drawn above the list (`tabRowStyle`).
+              return <View style={styles.tabSpace} />;
+            case 'toolbar':
+              return feedToolbar;
+            case 'empty':
+              return emptyActivity ?? null;
+            case 'favorite':
+              return <FavoritesTab userId={user.id} />;
+            case 'stats':
+              return <StatsTab userId={user.id} />;
+            default:
+              return <ActivityCard activity={item.activity} showAuthor={feed !== 'mine'} />;
+          }
         }}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={emptyActivity}
         ListFooterComponent={
           tab === 'activity' && activityFeed.isFetchingNextPage ? <LoadingState fill={false} label="" style={styles.footer} /> : undefined
         }
@@ -328,15 +360,13 @@ function ProfileBody({
         showsVerticalScrollIndicator={false}
       />
 
-      {/*
-        Pinned tab row. Under a transparent header it also fills the area behind the nav bar, so
-        the bar reads as opaque once the row is stuck (no feed content showing through the title).
-      */}
-      <Animated.View style={[styles.sticky, { top: 0, paddingTop: overlayTop, backgroundColor: c.background }, stickyStyle]}>
+      <Animated.View style={[styles.tabRow, tabRowStyle]} pointerEvents="box-none">
         {tabBar}
       </Animated.View>
 
       {isOwn ? <Fab onPress={() => sheets.compose({ kind: 'status' })} accessibilityLabel="Post a status" aboveTabBar /> : null}
+
+      <CoverViewer visible={viewerUri != null} uri={viewerUri} onClose={() => setViewerUri(null)} />
 
       <AboutSheet isPresented={aboutOpen} onDismiss={() => setAboutOpen(false)} name={user.name} aboutHtml={user.about} joined={joined} />
     </View>
@@ -346,7 +376,8 @@ function ProfileBody({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingBottom: 96 },
-  sticky: { position: 'absolute', left: 0, right: 0 },
+  tabRow: { position: 'absolute', top: 0, left: 0, right: 0 },
+  tabSpace: { height: PROFILE_TAB_BAR_HEIGHT },
   state: { paddingVertical: 48 },
   footer: { paddingVertical: 16 },
 });

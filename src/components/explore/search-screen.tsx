@@ -1,7 +1,8 @@
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { SearchBarCommands } from 'react-native-screens';
 
 import type { MediaBrowseItem } from '@/api/explore-extra';
 import { flattenPages } from '@/api/queries/hooks';
@@ -10,12 +11,14 @@ import { useAuthStatus, useIsSignedIn } from '@/auth';
 import { AppText } from '@/components/app-text';
 import { Chip } from '@/components/chip';
 import { EmptyState } from '@/components/empty-state';
+import { GlassSurface } from '@/components/glass-surface';
 import { ErrorState } from '@/components/error-state';
 import { HeaderToolbar } from '@/components/header-toolbar';
 import { Icon, icons } from '@/components/icon';
 import { LoadingState } from '@/components/loading-state';
 import { mediaIcons } from '@/components/media/media-icons';
 import { NativeMenu, choiceItems } from '@/components/menu/native-menu';
+import { MediaTypeToolbar, NATIVE_SEARCH_HEADER } from '@/components/native-header';
 import { ProgressLine } from '@/components/progress-line';
 import { ScreenHeader, useFloatingHeader } from '@/components/screen-header';
 import { haptics } from '@/lib/haptics';
@@ -52,7 +55,10 @@ export function SearchScreen() {
   const c = theme.colors;
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const header = useFloatingHeader();
+  const floatingHeader = useFloatingHeader();
+  // The iOS native bar is laid out by UIKit (automatic content insets), so nothing floats.
+  const header = NATIVE_SEARCH_HEADER ? { ...floatingHeader, floating: false, inset: 0 } : floatingHeader;
+  const searchBar = useRef<SearchBarCommands>(null);
   const insets = useSafeAreaInsets();
   // iOS automatic content insets already add the status bar; pad only the rest of a floating header.
   const topPad = header.floating ? Math.max(0, header.inset - (Platform.OS === 'ios' ? insets.top : 0)) : 0;
@@ -80,6 +86,20 @@ export function SearchScreen() {
       clearTimeout(fallback);
     };
   }, [navigation]);
+
+  // The native bar has no `value` prop and ignores `autoFocus` mid-push, and its ref isn't
+  // attached on the first render: once the push has finished, seed the query from the link
+  // (Explore search, "›" headers) or focus it for a bare search.
+  useEffect(() => {
+    if (!NATIVE_SEARCH_HEADER || !ready) return;
+    if (filters.query) searchBar.current?.setText(filters.query);
+    else if (autoFocus) {
+      // The search controller ignores focus until it is attached to the window, a beat after the push ends.
+      const id = setTimeout(() => searchBar.current?.focus(), 250);
+      return () => clearTimeout(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the screen is ready
+  }, [ready]);
 
   // Debounce typing into the query filter.
   useEffect(() => {
@@ -126,15 +146,18 @@ export function SearchScreen() {
         onPress={() => {
           // Blur the search field so its cursor doesn't keep blinking behind the sheet.
           Keyboard.dismiss();
+          searchBar.current?.blur();
           setSortOpen(true);
         }}
         accessibilityRole="button"
         accessibilityLabel={filters.sort ? `Sort by ${sortLabel(filters.sort, filters.type)}` : 'Sort'}
-        style={({ pressed }) => [styles.sortPill, { opacity: pressed ? 0.6 : 1 }]}>
-        <Icon name={icons.upDown} size={13} color={c.text} />
-        <AppText variant="subheadline" weight="600">
-          {filters.sort ? sortLabel(filters.sort, filters.type) : 'Sort'}
-        </AppText>
+        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+        <GlassSurface radius="pill" interactive fallbackColor={c.chipFill} style={styles.sortPill}>
+          <Icon name={icons.upDown} size={13} color={c.text} />
+          <AppText variant="subheadline" weight="600">
+            {filters.sort ? sortLabel(filters.sort, filters.type) : 'Sort'}
+          </AppText>
+        </GlassSurface>
       </Pressable>
       {filters.sort ? (
         <SortDirectionButton
@@ -162,10 +185,66 @@ export function SearchScreen() {
       <SearchResultCard media={item} onPress={() => openMedia(item.id)} />
     );
 
+  const chips = ready ? (
+    <FilterChipRow filters={filters} onChange={setFilters} signedIn={signedIn} showAdult={ctx.showAdultContent} />
+  ) : (
+    <View style={{ height: theme.sizes.chipHeight }} />
+  );
+  const progress = <ProgressLine active={results.isFetching && !results.isFetchingNextPage && !results.isLoading} />;
+  const loading = results.isLoading || !authReady || !ready;
+  const failed = !!results.error && items.length === 0;
+  const noResults = (
+    <EmptyState
+      title="No Results"
+      message={filterCount ? 'Try removing some filters.' : `No ${manga ? 'manga' : 'anime'} matched your search.`}
+      icon={icons.search}
+      actionLabel={filterCount ? 'Clear Filters' : undefined}
+      onAction={filterCount ? () => setFilters((f) => clearFilters(f)) : undefined}
+    />
+  );
+
   let body;
-  if (results.isLoading || !authReady || !ready) {
+  if (NATIVE_SEARCH_HEADER) {
+    // Under the native search bar the filters scroll with the results, so they stay mounted
+    // through loading and errors (shown as the list's empty state).
+    body = (
+      <FlatList
+        key={display}
+        data={loading || failed ? [] : items}
+        keyExtractor={(m) => String(m.id)}
+        renderItem={renderItem}
+        numColumns={display === 'grid' ? GRID_COLUMNS : 1}
+        columnWrapperStyle={display === 'grid' ? styles.gridRow : undefined}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.content}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        onEndReached={() => {
+          if (results.hasNextPage && !results.isFetchingNextPage) results.fetchNextPage();
+        }}
+        onEndReachedThreshold={0.6}
+        ListHeaderComponent={
+          <View style={styles.filters}>
+            {progress}
+            {chips}
+            {optionsRow}
+          </View>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <LoadingState fill={false} style={styles.state} />
+          ) : failed ? (
+            <ErrorState error={results.error} onRetry={() => results.refetch()} fill={false} style={styles.state} />
+          ) : (
+            noResults
+          )
+        }
+        ListFooterComponent={results.isFetchingNextPage ? <ActivityIndicator style={styles.footer} color={c.textSecondary} /> : undefined}
+      />
+    );
+  } else if (loading) {
     body = <LoadingState style={{ paddingTop: header.inset }} />;
-  } else if (results.error && items.length === 0) {
+  } else if (failed) {
     body = <ErrorState error={results.error} onRetry={() => results.refetch()} style={{ paddingTop: header.inset }} />;
   } else {
     body = (
@@ -185,15 +264,7 @@ export function SearchScreen() {
           if (results.hasNextPage && !results.isFetchingNextPage) results.fetchNextPage();
         }}
         onEndReachedThreshold={0.6}
-        ListEmptyComponent={
-          <EmptyState
-            title="No Results"
-            message={filterCount ? 'Try removing some filters.' : `No ${manga ? 'manga' : 'anime'} matched your search.`}
-            icon={icons.search}
-            actionLabel={filterCount ? 'Clear Filters' : undefined}
-            onAction={filterCount ? () => setFilters((f) => clearFilters(f)) : undefined}
-          />
-        }
+        ListEmptyComponent={noResults}
         ListFooterComponent={results.isFetchingNextPage ? <ActivityIndicator style={styles.footer} color={c.textSecondary} /> : undefined}
       />
     );
@@ -201,26 +272,44 @@ export function SearchScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: c.background }]}>
-      <ScreenHeader floating={header.floating} onHeightChange={header.onHeightChange}>
-        <HeaderToolbar
-          leading={{ icon: icons.back, onPress: () => router.back(), accessibilityLabel: 'Back' }}
-          search={{
-            value: text,
-            onChangeText: setText,
-            onSubmit: (q) => setFilters((f) => ({ ...f, query: q })),
-            autoFocus,
-          }}
-          mediaType={filters.type}
-          onMediaTypeChange={(t) => setFilters((f) => withType(f, t))}
-        />
-        {ready ? (
-          <FilterChipRow filters={filters} onChange={setFilters} signedIn={signedIn} showAdult={ctx.showAdultContent} />
-        ) : (
-          <View style={{ height: theme.sizes.chipHeight }} />
-        )}
-        {optionsRow}
-        <ProgressLine active={results.isFetching && !results.isFetchingNextPage && !results.isLoading} />
-      </ScreenHeader>
+      {NATIVE_SEARCH_HEADER ? (
+        <>
+          <Stack.Screen options={{ headerShown: true, title: '' }} />
+          <MediaTypeToolbar value={filters.type} onChange={(t) => setFilters((f) => withType(f, t))} />
+          <Stack.SearchBar
+            ref={searchBar}
+            placement="stacked"
+            hideWhenScrolling={false}
+            hideNavigationBar={false}
+            obscureBackground={false}
+            autoFocus={autoFocus}
+            autoCapitalize="none"
+            placeholder="Search"
+            tintColor={c.accent}
+            textColor={c.text}
+            onChangeText={(e) => setText(e.nativeEvent.text)}
+            onSearchButtonPress={(e) => setFilters((f) => ({ ...f, query: e.nativeEvent.text }))}
+            onCancelButtonPress={() => setText('')}
+          />
+        </>
+      ) : (
+        <ScreenHeader floating={header.floating} onHeightChange={header.onHeightChange}>
+          <HeaderToolbar
+            leading={{ icon: icons.back, onPress: () => router.back(), accessibilityLabel: 'Back' }}
+            search={{
+              value: text,
+              onChangeText: setText,
+              onSubmit: (q) => setFilters((f) => ({ ...f, query: q })),
+              autoFocus,
+            }}
+            mediaType={filters.type}
+            onMediaTypeChange={(t) => setFilters((f) => withType(f, t))}
+          />
+          {chips}
+          {optionsRow}
+          {progress}
+        </ScreenHeader>
+      )}
       {body}
       <SortSheet
         visible={sortOpen}
@@ -237,10 +326,12 @@ export function SearchScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  optionsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 4 },
+  optionsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
   spacer: { flex: 1 },
-  sortPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, height: 36 },
+  sortPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 36 },
   content: { paddingHorizontal: 12, paddingBottom: 32, gap: 10, flexGrow: 1 },
   gridRow: { gap: 10 },
   footer: { marginVertical: 16 },
+  filters: { gap: 10, marginHorizontal: -12, paddingBottom: 4 },
+  state: { paddingVertical: 48 },
 });

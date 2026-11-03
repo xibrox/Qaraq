@@ -115,6 +115,7 @@ describe('labels', () => {
     expect(swipeActionLabel('increment', 'ANIME')).toBe('Increase Episode');
     expect(swipeActionLabel('increment', 'MANGA')).toBe('Increase Chapter');
     expect(swipeActionLabel('customList', 'ANIME')).toBe('Custom List');
+    expect(swipeActionLabel('incrementVolume', 'MANGA')).toBe('Increase Volume');
     expect(listStatusLabel('CURRENT')).toBe('Watching');
     expect(listStatusLabel('REPEATING', 'MANGA')).toBe('Rereading');
   });

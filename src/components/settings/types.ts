@@ -14,7 +14,10 @@ import type { MenuIcon } from '@/components/menu/types';
  * Icons use `MenuIcon`: an SF Symbol on iOS and an XML image source on Android
  * (`import Bell from '@expo/material-symbols/notifications.xml'`). Either side may be omitted.
  */
-export type SettingsIcon = MenuIcon;
+export type SettingsIcon = MenuIcon & {
+  /** iOS: fill of the rounded icon tile (Settings-app style); system gray when omitted. */
+  color?: string;
+};
 
 export type SettingsFormProps = {
   /** `SettingsSection` elements. */

@@ -15,14 +15,12 @@ import {
   VStack,
 } from '@expo/ui/swift-ui';
 import {
-  accessibilityAddTraits,
   accessibilityValue,
   contentShape,
   disabled as disabledModifier,
   font,
   foregroundStyle,
   frame,
-  headerProminence,
   layoutPriority,
   lineLimit,
   listRowBackground,
@@ -55,16 +53,20 @@ import type {
   SettingsValueRowProps,
 } from './types';
 
-// SwiftUI Form, styled like AniClient's inset grouped settings (Nunito, themed card fill).
+// SwiftUI Form styled like the iOS Settings app: system font, coloured icon tiles, switches,
+// standard section headers, on the theme's grouped colours.
 
-const ICON_COLUMN = 26;
+/** Settings-app icon tile. */
+const TILE = 29;
+const TILE_RADIUS = 7;
+const SYSTEM_GRAY = '#8E8E93';
 
-function titleFont(theme: Theme) {
-  return font({ family: theme.fontFamily, size: 17, weight: 'semibold' });
+function titleFont(_theme: Theme) {
+  return font({ size: 17 });
 }
 
-function subtitleFont(theme: Theme) {
-  return font({ family: theme.fontFamily, size: 13 });
+function subtitleFont(_theme: Theme) {
+  return font({ size: 13 });
 }
 
 function rowModifiers(theme: Theme, disabled?: boolean) {
@@ -74,10 +76,19 @@ function rowModifiers(theme: Theme, disabled?: boolean) {
   return mods;
 }
 
-function Leading({ icon, color }: { icon?: SettingsIcon; color: string }) {
+/** White glyph on a coloured rounded tile (red for destructive rows). */
+function Leading({ icon, color }: { icon?: SettingsIcon; color?: string }) {
   if (!icon?.ios) return null;
   return (
-    <Image systemName={icon.ios} size={16} color={color} modifiers={[frame({ width: ICON_COLUMN, alignment: 'leading' })]} />
+    <Image
+      systemName={icon.ios}
+      size={16}
+      color="#FFFFFF"
+      modifiers={[
+        frame({ width: TILE, height: TILE }),
+        background(color ?? icon.color ?? SYSTEM_GRAY, shapes.roundedRectangle({ cornerRadius: TILE_RADIUS })),
+      ]}
+    />
   );
 }
 
@@ -103,7 +114,7 @@ function Titles({ title, subtitle, color }: { title: string; subtitle?: string; 
 function ValueText({ value }: { value: string }) {
   const theme = useTheme();
   return (
-    <Text modifiers={[font({ family: theme.fontFamily, size: 16 }), foregroundStyle(theme.colors.textSecondary), lineLimit(1)]}>
+    <Text modifiers={[font({ size: 17 }), foregroundStyle(theme.colors.textSecondary), lineLimit(1)]}>
       {value}
     </Text>
   );
@@ -134,14 +145,7 @@ export function SettingsSection({ title, footer, children }: SettingsSectionProp
   const theme = useTheme();
   return (
     <Section
-      modifiers={[headerProminence('increased')]}
-      header={
-        title ? (
-          <Text modifiers={[font({ family: theme.fontFamily, size: 17, weight: 'bold' }), foregroundStyle(theme.colors.textMuted)]}>
-            {title}
-          </Text>
-        ) : undefined
-      }
+      title={title}
       footer={
         footer ? (
           <Text modifiers={[subtitleFont(theme), foregroundStyle(theme.colors.textSecondary)]}>{footer}</Text>
@@ -156,8 +160,8 @@ export function SettingsNavigationRow({ title, subtitle, icon, value, onPress, d
   const theme = useTheme();
   return (
     <Button onPress={onPress} modifiers={rowModifiers(theme, disabled)} testID={testID}>
-      <HStack spacing={10}>
-        <Leading icon={icon} color={theme.colors.text} />
+      <HStack spacing={12}>
+        <Leading icon={icon} />
         <Titles title={title} subtitle={subtitle} />
         <Spacer />
         {value ? <ValueText value={value} /> : null}
@@ -189,8 +193,8 @@ export function SettingsButtonRow({ title, subtitle, icon, value, onPress, disab
   }
   return (
     <Button onPress={onPress} modifiers={rowModifiers(theme, disabled)} testID={testID}>
-      <HStack spacing={10}>
-        <Leading icon={icon} color={theme.colors.text} />
+      <HStack spacing={12}>
+        <Leading icon={icon} />
         <Titles title={title} subtitle={subtitle} />
         <Spacer />
         {value ? <ValueText value={value} /> : null}
@@ -282,8 +286,8 @@ export function SettingsValueRow<T extends string>({
       modifiers={[...rowModifiers(theme, disabled), accessibilityValue(current?.label ?? '')]}
       testID={testID}
       label={
-        <HStack spacing={10} modifiers={[contentShape(shapes.rectangle())]}>
-          <Leading icon={icon} color={theme.colors.text} />
+        <HStack spacing={12} modifiers={[contentShape(shapes.rectangle())]}>
+          <Leading icon={icon} />
           <Titles title={title} subtitle={subtitle} />
           <Spacer />
           {current?.swatch ? <Swatch color={current.swatch} /> : <ValueText value={current?.label ?? ''} />}
@@ -295,25 +299,9 @@ export function SettingsValueRow<T extends string>({
   );
 }
 
+/** Stock iOS: booleans are switches (AniClient drew trailing checkmarks). */
 export function SettingsCheckRow({ title, subtitle, icon, checked, onToggle, disabled, testID }: SettingsCheckRowProps) {
-  const theme = useTheme();
-  return (
-    <Button
-      onPress={() => onToggle(!checked)}
-      modifiers={[
-        ...rowModifiers(theme, disabled),
-        accessibilityValue(checked ? 'On' : 'Off'),
-        ...(checked ? [accessibilityAddTraits(['isSelected'])] : []),
-      ]}
-      testID={testID}>
-      <HStack spacing={10}>
-        <Leading icon={icon} color={theme.colors.text} />
-        <Titles title={title} subtitle={subtitle} />
-        <Spacer />
-        {checked ? <Image systemName="checkmark" size={15} color={theme.colors.accent} /> : null}
-      </HStack>
-    </Button>
-  );
+  return <SettingsSwitchRow title={title} subtitle={subtitle} icon={icon} value={checked} onValueChange={onToggle} disabled={disabled} testID={testID} />;
 }
 
 export function SettingsSwitchRow({ title, subtitle, icon, value, onValueChange, disabled, testID }: SettingsSwitchRowProps) {
@@ -324,8 +312,8 @@ export function SettingsSwitchRow({ title, subtitle, icon, value, onValueChange,
       onIsOnChange={onValueChange}
       modifiers={[tint(theme.colors.success), ...rowModifiers(theme, disabled)]}
       testID={testID}>
-      <HStack spacing={10}>
-        <Leading icon={icon} color={theme.colors.text} />
+      <HStack spacing={12}>
+        <Leading icon={icon} />
         <Titles title={title} subtitle={subtitle} />
       </HStack>
     </Toggle>
@@ -343,7 +331,7 @@ export function SettingsDestructiveRow({ title, icon, onPress, disabled, testID,
   }
   return (
     <Button role="destructive" onPress={onPress} modifiers={rowModifiers(theme, disabled)} testID={testID}>
-      <HStack spacing={10}>
+      <HStack spacing={12}>
         <Leading icon={icon} color={theme.colors.danger} />
         <Titles title={title} color={theme.colors.danger} />
         <Spacer />
@@ -370,8 +358,8 @@ export function SettingsCustomRow({ children, bare }: SettingsCustomRowProps) {
 export function SettingsTextRow({ title, subtitle, icon, value, disabled, testID }: SettingsTextRowProps) {
   const theme = useTheme();
   return (
-    <HStack spacing={10} modifiers={rowModifiers(theme, disabled)} testID={testID}>
-      <Leading icon={icon} color={theme.colors.text} />
+    <HStack spacing={12} modifiers={rowModifiers(theme, disabled)} testID={testID}>
+      <Leading icon={icon} />
       <Titles title={title} subtitle={subtitle} />
       <Spacer />
       {value ? <ValueText value={value} /> : null}

@@ -48,7 +48,7 @@ import {
   type ThemeBackground,
   type ToolbarStyle,
 } from '@/settings';
-import { ACCENT_HEX, BACKGROUND_HEX } from '@/theme';
+import { ACCENT_HEX, BACKGROUND_SWATCH_HEX } from '@/theme';
 
 function labelled<T extends string>(values: readonly T[], labels: Record<T, string>, subtitles?: Record<T, string>) {
   return values.map((value): SettingsOption<T> => ({ value, label: labels[value], subtitle: subtitles?.[value] }));
@@ -72,7 +72,7 @@ const THEME_OPTIONS = THEME_BACKGROUNDS.map(
   (value): SettingsOption<ThemeBackground> => ({
     value,
     label: THEME_BACKGROUND_LABELS[value],
-    swatch: value === 'system' ? SYSTEM_SWATCH : BACKGROUND_HEX[value],
+    swatch: value === 'system' ? SYSTEM_SWATCH : BACKGROUND_SWATCH_HEX[value],
   }),
 );
 

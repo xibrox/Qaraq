@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { createPersistStorage } from '@/lib/storage';
 
-import { createDefaultSettings, DEFAULT_SWIPE_GESTURES, mergeSettings } from './defaults';
+import { createDefaultSettings, DEFAULT_SWIPE_GESTURES, LIST_STATUS_SECTIONS, mergeSettings } from './defaults';
 import type {
   AiringNotificationStatus,
   ListDisplayMode,
@@ -151,6 +151,11 @@ export function setListSort(type: MediaType, sort: ListSort) {
 
 export function setSectionOrder(type: MediaType, order: ListSectionKey[]) {
   patch({ listSectionOrder: { ...st().listSectionOrder, [type]: order } });
+}
+
+/** Reorder sheet's reset: statuses in the default order, then custom lists in AniList's order. */
+export function resetSectionOrder(type: MediaType, customListNames: string[]) {
+  setSectionOrder(type, [...LIST_STATUS_SECTIONS, ...customListNames.map((n) => `custom:${n}` as ListSectionKey)]);
 }
 
 /**

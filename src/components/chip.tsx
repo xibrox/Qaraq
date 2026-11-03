@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'rea
 import { useTheme } from '@/theme';
 
 import { AppText } from './app-text';
+import { GlassSurface } from './glass-surface';
 import { Icon, type IconName } from './icon';
 
 export type ChipProps = {
@@ -15,9 +16,12 @@ export type ChipProps = {
   /** Trailing icon (e.g. chevron for pickers). */
   trailingIcon?: IconName;
   /**
-   * - `filled` (default): status chip, dark fill + 1px border; selected = accent fill
-   * - `outlined`: transparent with border (filter chips, "≡ Type", sort pill)
+   * - `filled` (default): status chip; selected = accent
+   * - `outlined`: filter chips, "≡ Type"
    * - `tag`: small outlined tag (list status on result cards, "Donator")
+   *
+   * `filled` and `outlined` are Liquid Glass capsules when the Toolbar Style draws glass (the
+   * selected one tinted with the accent), else flat capsules.
    */
   variant?: 'filled' | 'outlined' | 'tag';
   /** `md` = 36pt (default), `sm` = 30pt. */
@@ -51,24 +55,38 @@ export function Chip({
   const bg = selected ? c.accent : variant === 'filled' ? c.chipFill : 'transparent';
   const border = selected ? c.accent : c.chipBorder;
 
-  const content = (
-    <View
-      style={[
-        styles.chip,
-        {
-          height,
-          borderRadius: isTag ? 6 : theme.radii.lg,
-          paddingHorizontal: isTag ? 7 : 14,
-          backgroundColor: bg,
-          borderColor: border,
-        },
-        style,
-      ]}>
+  const inner = (
+    <>
       {icon ? <Icon name={icon} size={isTag ? 11 : 14} color={fg} /> : null}
       <AppText variant={isTag ? 'caption1' : size === 'md' ? 'chip' : 'subheadline'} color={fg} numberOfLines={1}>
         {label}
       </AppText>
       {trailingIcon ? <Icon name={trailingIcon} size={11} color={fg} /> : null}
+    </>
+  );
+  const content = !isTag ? (
+    <GlassSurface
+      radius="pill"
+      interactive={!!onPress}
+      tint={selected ? c.accent : undefined}
+      fallbackColor={bg === 'transparent' ? c.chipFill : bg}
+      style={[styles.chip, styles.glass, { height, paddingHorizontal: size === 'md' ? 16 : 12 }, style]}>
+      {inner}
+    </GlassSurface>
+  ) : (
+    <View
+      style={[
+        styles.chip,
+        {
+          height,
+          borderRadius: 6,
+          paddingHorizontal: 7,
+          backgroundColor: bg,
+          borderColor: border,
+        },
+        style,
+      ]}>
+      {inner}
     </View>
   );
 
@@ -90,4 +108,5 @@ export function Chip({
 
 const styles = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1 },
+  glass: { borderWidth: 0 },
 });

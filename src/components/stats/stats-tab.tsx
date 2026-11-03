@@ -6,7 +6,8 @@ import type { MediaType } from '@/api/types';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorState } from '@/components/error-state';
 import { icons } from '@/components/icon';
-import { MediaTypeSwitch } from '@/components/segmented-switch';
+import { NativeSegmentedPicker } from '@/components/segmented-picker/native-segmented-picker';
+import { MEDIA_TYPE_SEGMENTS } from '@/components/segmented-switch';
 import { Skeleton } from '@/components/skeleton';
 import { useSetting } from '@/settings';
 
@@ -57,7 +58,7 @@ export function StatsTab({ userId }: { userId: number }) {
       <ActivityHeatmap userId={userId} />
       <StatSectionTitle
         title="Summary"
-        trailing={<MediaTypeSwitch value={type} onChange={setType} size="md" />}
+        trailing={<NativeSegmentedPicker segments={MEDIA_TYPE_SEGMENTS} value={type} onChange={setType} style={styles.mediaType} />}
       />
       {body}
     </View>
@@ -67,5 +68,6 @@ export function StatsTab({ userId }: { userId: number }) {
 const styles = StyleSheet.create({
   container: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32, gap: 12 },
   skeletons: { gap: 12 },
+  mediaType: { width: 160 },
   state: { paddingVertical: 40 },
 });

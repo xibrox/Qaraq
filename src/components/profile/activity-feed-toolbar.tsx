@@ -3,6 +3,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { menuIcons } from '@/components/activity/menu-icons';
 import { AppText } from '@/components/app-text';
+import { GlassSurface } from '@/components/glass-surface';
 import { Icon, type IconName } from '@/components/icon';
 import { NativeMenu } from '@/components/menu/native-menu';
 import { choiceItems, type MenuIcon } from '@/components/menu/types';
@@ -43,7 +44,6 @@ export function ActivityFeedToolbar({ feed, onFeedChange, filter, onFilterChange
   };
   const feedOptions = ACTIVITY_FEEDS.map((f) => ({ value: f, label: ACTIVITY_FEED_LABELS[f], icon: FEED_MENU_ICON[f] }));
   const filterOptions = ACTIVITY_FILTERS.map((f) => ({ value: f, label: ACTIVITY_FILTER_LABELS[f] }));
-  const pill = [styles.pill, { backgroundColor: c.surface, borderRadius: theme.radii.md }];
 
   return (
     <View style={styles.row}>
@@ -52,13 +52,15 @@ export function ActivityFeedToolbar({ feed, onFeedChange, filter, onFilterChange
           title="Activity Feed Type"
           items={choiceItems(feedOptions, feed, select(onFeedChange))}
           accessibilityLabel={`Activity feed: ${ACTIVITY_FEED_LABELS[feed]}`}>
-          <View style={pill} accessibilityRole="button" accessibilityLabel={`Activity feed: ${ACTIVITY_FEED_LABELS[feed]}`}>
-            <Icon name={FEED_ICON[feed]} size={14} color={c.textSecondary} />
-            <AppText variant="subheadline" weight="600" tone="secondary">
-              {ACTIVITY_FEED_LABELS[feed]}
-            </AppText>
-            <Icon name={profileIcons.caretDown} size={9} color={c.textSecondary} />
-          </View>
+          <GlassSurface radius="pill" interactive fallbackColor={c.surface} style={styles.pill}>
+            <View style={styles.pillInner} accessibilityRole="button" accessibilityLabel={`Activity feed: ${ACTIVITY_FEED_LABELS[feed]}`}>
+              <Icon name={FEED_ICON[feed]} size={14} color={c.textSecondary} />
+              <AppText variant="subheadline" weight="600" tone="secondary">
+                {ACTIVITY_FEED_LABELS[feed]}
+              </AppText>
+              <Icon name={profileIcons.caretDown} size={9} color={c.textSecondary} />
+            </View>
+          </GlassSurface>
         </NativeMenu>
       ) : (
         <View />
@@ -67,15 +69,17 @@ export function ActivityFeedToolbar({ feed, onFeedChange, filter, onFilterChange
         title="Activity Filter"
         items={choiceItems(filterOptions, filter, select(onFilterChange))}
         accessibilityLabel={`Activity filter: ${ACTIVITY_FILTER_LABELS[filter]}`}>
-        <View style={pill} accessibilityRole="button" accessibilityLabel={`Activity filter: ${ACTIVITY_FILTER_LABELS[filter]}`}>
-          <FunnelGlyph size={14} color={filter === 'all' ? c.textSecondary : c.accent} />
-          {filter !== 'all' ? (
-            <AppText variant="subheadline" weight="600" tone="secondary">
-              {ACTIVITY_FILTER_LABELS[filter]}
-            </AppText>
-          ) : null}
-          <Icon name={profileIcons.caretDown} size={9} color={c.textSecondary} />
-        </View>
+        <GlassSurface radius="pill" interactive fallbackColor={c.surface} style={styles.pill}>
+          <View style={styles.pillInner} accessibilityRole="button" accessibilityLabel={`Activity filter: ${ACTIVITY_FILTER_LABELS[filter]}`}>
+            <FunnelGlyph size={14} color={filter === 'all' ? c.textSecondary : c.accent} />
+            {filter !== 'all' ? (
+              <AppText variant="subheadline" weight="600" tone="secondary">
+                {ACTIVITY_FILTER_LABELS[filter]}
+              </AppText>
+            ) : null}
+            <Icon name={profileIcons.caretDown} size={9} color={c.textSecondary} />
+          </View>
+        </GlassSurface>
       </NativeMenu>
     </View>
   );
@@ -98,5 +102,6 @@ function FunnelGlyph({ size, color }: { size: number; color: string }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10 },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 10 },
+  pill: { height: 34, justifyContent: 'center' },
+  pillInner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14 },
 });

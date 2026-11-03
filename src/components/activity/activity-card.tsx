@@ -24,7 +24,7 @@ export type ActivityCardProps = {
   activity: Activity;
   /**
    * Show the author's name and avatar (default true). Off on a single user's feed
-   * ("My Activity"), where AniClient's list cards are shorter.
+   * ("My Activity"); the cover stays the same size either way.
    */
   showAuthor?: boolean;
   /** Clip long text with a fade and "⌄" (feed). Off on the detail screen. */
@@ -116,7 +116,7 @@ function ListActivityCard({ activity, showAuthor, onPress, onDeleted }: CardProp
   const prefix = listActivityPrefix(activity.status, activity.progress);
   const user = activity.user;
   const listText = (
-    <AppText variant="feed" weight="400" numberOfLines={showAuthor ? 4 : 3}>
+    <AppText variant="feed" weight="400" numberOfLines={4}>
       {`${prefix} `}
       <AppText variant="feed" weight="800">
         {title}
@@ -129,8 +129,8 @@ function ListActivityCard({ activity, showAuthor, onPress, onDeleted }: CardProp
         <Pressable onPress={media ? () => router.push(hrefs.media(media.id)) : undefined} accessibilityRole="link" accessibilityLabel={title}>
           <CoverImage
             uri={media?.coverImage?.large ?? media?.coverImage?.medium}
-            width={showAuthor ? 84 : 80}
-            height={showAuthor ? 128 : 92}
+            width={84}
+            height={128}
             radius={theme.radii.md}
             isAdult={media?.isAdult}
             recyclingKey={`activity-${activity.id}`}

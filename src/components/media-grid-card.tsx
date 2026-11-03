@@ -56,7 +56,8 @@ export function MediaGridCard({
       accessibilityLabel={title}
       testID={testID}
       style={({ pressed }) => [{ width, opacity: pressed ? 0.75 : 1 }, style]}>
-      <View>
+      {/* Clipped to the cover's corners so bottom overlays (progress strip) don't poke out past them. */}
+      <View style={[styles.cover, { borderRadius: theme.radii.md }]}>
         <CoverImage uri={coverUrl} width={width} isAdult={isAdult} radius={theme.radii.md} recyclingKey={recyclingKey} />
         {topLeft ? <View style={[styles.overlay, styles.topLeft]}>{topLeft}</View> : null}
         {topRight ? <View style={[styles.overlay, styles.topRight]}>{topRight}</View> : null}
@@ -75,6 +76,7 @@ export function MediaGridCard({
 }
 
 const styles = StyleSheet.create({
+  cover: { overflow: 'hidden' },
   overlay: { position: 'absolute' },
   topLeft: { top: 6, left: 6 },
   topRight: { top: 6, right: 6 },

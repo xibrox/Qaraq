@@ -57,7 +57,7 @@ export const TOOLBAR_STYLES: readonly ToolbarStyle[] = ['follow', 'glass', 'soli
 
 export const PREFERRED_TITLES: readonly PreferredTitle[] = ['userPreferred', 'english', 'romaji', 'native'];
 
-export const SWIPE_ACTIONS: readonly SwipeAction[] = ['increment', 'customList', 'delete'];
+export const SWIPE_ACTIONS: readonly SwipeAction[] = ['increment', 'incrementVolume', 'customList', 'delete'];
 
 export const SCORE_TYPES: readonly ScoreType[] = ['smiley', 'star'];
 

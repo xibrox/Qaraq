@@ -1,7 +1,9 @@
+import { Stack } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { NativeMenu, type MenuEntry } from '@/components/menu/native-menu';
+import { toolbarMenuItems, toolbarTitle } from '@/components/native-header';
 import type { MediaType } from '@/api/types';
 import { setListDisplayMode, toggleSectionHidden, useSettings } from '@/settings/store';
 import { LIST_DISPLAY_MODE_LABELS } from '@/settings/labels';
@@ -9,24 +11,71 @@ import { LIST_DISPLAY_MODES } from '@/settings/defaults';
 import { useTheme } from '@/theme';
 
 import { listIcons } from './list-icons';
-import { sectionLabel } from './list-model';
+import { isCustomSection, sectionLabel } from './list-model';
+import type { ListChoice } from './use-my-list';
 
-export type DisplayMenuProps = { type: MediaType };
+export type DisplayMenuProps = {
+  type: MediaType;
+  lists: readonly ListChoice[];
+  /** The chosen custom list's name, or null for the main list. */
+  activeList: string | null;
+  onSelectList: (name: string | null) => void;
+};
 
 /**
- * The leading toolbar glyph (lines with a vertical bar). Its AniClient function is unseen, so it
- * holds the list display options: List / Grid, and which chips are shown.
+ * The leading toolbar glyph (lines with a vertical bar). As in AniClient it opens "Choose Anime
+ * List": the main list ("Default") and each custom list with its entry count. Below that are the
+ * display options: List / Grid, and which status chips are shown.
  */
-export function DisplayMenu({ type }: DisplayMenuProps) {
+export function DisplayMenu(props: DisplayMenuProps) {
   const theme = useTheme();
+  return (
+    <NativeMenu items={useDisplayMenuItems(props)}>
+      <View style={styles.trigger} accessibilityRole="button" accessibilityLabel={TRIGGER_LABEL}>
+        <Icon name={listIcons.sidebar} size={20} color={theme.colors.text} />
+      </View>
+    </NativeMenu>
+  );
+}
+
+/** The same menu as a native navigation bar button (iOS native header), followed by the screen title. */
+export function DisplayToolbarMenu({ title, ...props }: DisplayMenuProps & { title: string }) {
+  const theme = useTheme();
+  return (
+    <Stack.Toolbar placement="left">
+      <Stack.Toolbar.Menu icon={listIcons.sidebar.ios} tintColor={theme.colors.text} accessibilityLabel={TRIGGER_LABEL}>
+        {toolbarMenuItems(useDisplayMenuItems(props))}
+      </Stack.Toolbar.Menu>
+      {toolbarTitle(title)}
+    </Stack.Toolbar>
+  );
+}
+
+const TRIGGER_LABEL = 'Choose list and display options';
+
+function useDisplayMenuItems({ type, lists, activeList, onSelectList }: DisplayMenuProps): MenuEntry[] {
   const { mode, order, hidden } = useSettings((s) => ({
     mode: s.listDisplayMode[type],
     order: s.listSectionOrder[type],
     hidden: s.hiddenListSections[type],
   }));
-  const visibleCount = order.length - order.filter((k) => hidden.includes(k)).length;
+  const statusKeys = order.filter((k) => !isCustomSection(k));
+  const visibleCount = statusKeys.filter((k) => !hidden.includes(k)).length;
+  const mainLabel = type === 'MANGA' ? 'Manga List' : 'Anime List';
 
   const items: MenuEntry[] = [
+    {
+      kind: 'section',
+      key: 'choose',
+      title: type === 'MANGA' ? 'Choose Manga List' : 'Choose Anime List',
+      items: lists.map((l) => ({
+        key: l.name ?? '',
+        title: l.name ?? mainLabel,
+        subtitle: l.name ? String(l.count) : `Default · ${l.count}`,
+        checked: l.name === activeList,
+        onPress: () => onSelectList(l.name),
+      })),
+    },
     {
       kind: 'section',
       key: 'view',
@@ -43,7 +92,7 @@ export function DisplayMenu({ type }: DisplayMenuProps) {
       kind: 'section',
       key: 'lists',
       title: 'Show Lists',
-      items: order.map((key) => {
+      items: statusKeys.map((key) => {
         const shown = !hidden.includes(key);
         return {
           key,
@@ -57,13 +106,7 @@ export function DisplayMenu({ type }: DisplayMenuProps) {
     },
   ];
 
-  return (
-    <NativeMenu items={items} title="Display">
-      <View style={styles.trigger} accessibilityRole="button" accessibilityLabel="Display options">
-        <Icon name={listIcons.sidebar} size={20} color={theme.colors.text} />
-      </View>
-    </NativeMenu>
-  );
+  return items;
 }
 
 const styles = StyleSheet.create({

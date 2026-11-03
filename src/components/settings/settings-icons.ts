@@ -16,21 +16,24 @@ import Tune from '@expo/material-symbols/tune.xml';
 
 import type { SettingsIcon } from './types';
 
-/** Leading row icons for the Settings screens (SF Symbol on iOS, Material Symbol on Android). */
+/**
+ * Leading row icons for the Settings screens (SF Symbol on iOS, Material Symbol on Android). The
+ * colour fills the iOS icon tile, like the iPhone Settings app.
+ */
 export const settingsIcons = {
-  general: { ios: 'gearshape', android: Settings },
-  notifications: { ios: 'bell.badge', android: Notifications },
-  anilist: { ios: 'a.square', android: AccountCircle },
-  whatsNew: { ios: 'newspaper', android: Campaign },
-  rateApp: { ios: 'star.fill', android: Star },
-  signOut: { ios: 'rectangle.portrait.and.arrow.right', android: Logout },
-  signIn: { ios: 'person.crop.circle.badge.plus', android: Login },
-  color: { ios: 'paintbrush.pointed', android: Brush },
-  theme: { ios: 'paintpalette', android: Palette },
-  blur: { ios: 'circle.grid.3x3', android: BlurOn },
-  vibration: { ios: 'iphone.radiowaves.left.and.right', android: MobileVibrate },
-  preferredTitle: { ios: 'character.textbox', android: Translate },
-  toolbarStyle: { ios: 'menubar.rectangle', android: Toolbar },
-  gestures: { ios: 'hand.tap', android: Gesture },
-  more: { ios: 'gearshape.2', android: Tune },
+  general: { ios: 'gearshape.fill', android: Settings, color: '#8E8E93' },
+  notifications: { ios: 'bell.badge.fill', android: Notifications, color: '#FF3B30' },
+  anilist: { ios: 'a.square', android: AccountCircle, color: '#02A9FF' },
+  whatsNew: { ios: 'newspaper.fill', android: Campaign, color: '#FF9500' },
+  rateApp: { ios: 'star.fill', android: Star, color: '#FFCC00' },
+  signOut: { ios: 'rectangle.portrait.and.arrow.right', android: Logout, color: '#FF3B30' },
+  signIn: { ios: 'person.crop.circle.fill.badge.plus', android: Login, color: '#007AFF' },
+  color: { ios: 'paintbrush.pointed.fill', android: Brush, color: '#AF52DE' },
+  theme: { ios: 'paintpalette.fill', android: Palette, color: '#5856D6' },
+  blur: { ios: 'circle.grid.3x3', android: BlurOn, color: '#30B0C7' },
+  vibration: { ios: 'iphone.radiowaves.left.and.right', android: MobileVibrate, color: '#FF2D55' },
+  preferredTitle: { ios: 'character.textbox', android: Translate, color: '#007AFF' },
+  toolbarStyle: { ios: 'menubar.rectangle', android: Toolbar, color: '#5AC8FA' },
+  gestures: { ios: 'hand.tap.fill', android: Gesture, color: '#34C759' },
+  more: { ios: 'gearshape.2.fill', android: Tune, color: '#8E8E93' },
 } as const satisfies Record<string, SettingsIcon>;

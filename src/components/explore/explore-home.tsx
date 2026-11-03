@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { FlatList, Platform, RefreshControl, StyleSheet, View, useWindowDimensions, type ListRenderItem } from 'react-native';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, View, useWindowDimensions, type ListRenderItem } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { exploreHomeVariables } from '@/api/explore';
@@ -12,6 +12,10 @@ import { HeaderToolbar } from '@/components/header-toolbar';
 import { LoadingState } from '@/components/loading-state';
 import { MediaCarousel } from '@/components/media-carousel';
 import { MediaGridCard } from '@/components/media-grid-card';
+import { AppText } from '@/components/app-text';
+import { GlassSurface } from '@/components/glass-surface';
+import { Icon, icons } from '@/components/icon';
+import { MediaTypeToolbar, NATIVE_SEARCH_HEADER, TitleToolbar } from '@/components/native-header';
 import { ScreenHeader, useFloatingHeader } from '@/components/screen-header';
 import { SectionHeader } from '@/components/section-header';
 import { MediaCardSkeleton } from '@/components/skeleton';
@@ -48,13 +52,26 @@ export function ExploreHome() {
   const theme = useTheme();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const header = useFloatingHeader();
+  const floatingHeader = useFloatingHeader();
+  // The iOS native bar is laid out by UIKit (automatic content insets), so nothing floats.
+  const header = NATIVE_SEARCH_HEADER ? { ...floatingHeader, floating: false, inset: 0 } : floatingHeader;
   const insets = useSafeAreaInsets();
   // iOS automatic content insets already add the status bar; pad only the rest of a floating header.
   const topPad = header.floating ? Math.max(0, header.inset - (Platform.OS === 'ios' ? insets.top : 0)) : 0;
   const preferred = useSetting('preferredTitle');
   const defaultType = useSetting('defaultMediaType');
   const [type, setType] = useState<MediaType>(defaultType);
+  const openingSearch = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      openingSearch.current = false;
+    }, []),
+  );
+  const openSearch = () => {
+    if (openingSearch.current) return;
+    openingSearch.current = true;
+    router.push(hrefs.search({ type }));
+  };
 
   // Wait for the stored session: an anonymous request resolves title.userPreferred to romaji and
   // the cached result would never be refetched once the token is attached.
@@ -171,6 +188,23 @@ export function ExploreHome() {
   const loadingLabel = type === 'MANGA' ? 'Loading Mangas...' : 'Loading Animes...';
   const refreshing = home.isRefetching && !homeLoading;
 
+  // iOS: a search-bar-shaped button; the Search screen opens with its own search bar focused.
+  // One push per visit, so a quick double tap can't stack two Search screens.
+  const searchButton = (
+    <Pressable
+      onPress={openSearch}
+      accessibilityRole="search"
+      accessibilityLabel="Search"
+      style={({ pressed }) => [styles.searchButton, { opacity: pressed ? 0.7 : 1 }]}>
+      <GlassSurface radius="pill" interactive fallbackColor={theme.colors.field} style={styles.searchPill}>
+        <Icon name={icons.search} size={19} color={theme.colors.textSecondary} />
+        <AppText variant="body" tone="secondary" style={styles.searchText}>
+          Search
+        </AppText>
+      </GlassSurface>
+    </Pressable>
+  );
+
   let body;
   if (homeLoading) {
     body = <LoadingState label={loadingLabel} style={{ paddingTop: header.inset }} />;
@@ -182,8 +216,9 @@ export function ExploreHome() {
         data={rows}
         keyExtractor={(r) => `${type}-${r.key}`}
         renderItem={renderRow}
+        ListHeaderComponent={NATIVE_SEARCH_HEADER ? searchButton : undefined}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: NATIVE_SEARCH_HEADER ? 0 : topPad + 8, paddingBottom: 32 }}
         scrollIndicatorInsets={{ top: topPad }}
         onEndReached={() => {
           const loaded = flattenPages(top.data, (p) => p.Page.media).length;
@@ -208,19 +243,26 @@ export function ExploreHome() {
     );
   }
 
+  const title = type === 'MANGA' ? 'Explore Manga' : 'Explore Anime';
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
-      <ScreenHeader
-        title={type === 'MANGA' ? 'Explore Manga' : 'Explore Anime'}
-        floating={header.floating}
-        onHeightChange={header.onHeightChange}>
-        <HeaderToolbar
-          search={{ onPress: () => router.push(hrefs.search({ type })) }}
-          mediaType={type}
-          onMediaTypeChange={setType}
-          mediaTypeDisabled={homeLoading}
-        />
-      </ScreenHeader>
+      {NATIVE_SEARCH_HEADER ? (
+        <>
+          {/* The title is a left toolbar item (see `toolbarTitle`); the centred native one stays empty. */}
+          <Stack.Screen options={{ headerShown: true, title: '' }} />
+          <TitleToolbar title={title} />
+          <MediaTypeToolbar value={type} onChange={setType} disabled={homeLoading} />
+        </>
+      ) : (
+        <ScreenHeader title={title} floating={header.floating} onHeightChange={header.onHeightChange}>
+          <HeaderToolbar
+            search={{ onPress: () => router.push(hrefs.search({ type })) }}
+            mediaType={type}
+            onMediaTypeChange={setType}
+            mediaTypeDisabled={homeLoading}
+          />
+        </ScreenHeader>
+      )}
       {body}
     </View>
   );
@@ -230,4 +272,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   sectionHeader: { marginTop: 22, marginBottom: 12 },
   gridRow: { flexDirection: 'row', marginBottom: 10 },
+  searchButton: { paddingHorizontal: 16, paddingBottom: 4 },
+  searchPill: { height: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14 },
+  // The system search bar's placeholder size.
+  searchText: { fontSize: 17 },
 });

@@ -29,7 +29,9 @@ const SEGMENTS = [
 ] as const satisfies readonly { value: MediaType; label: string }[];
 
 function actionOptions(type: MediaType): SettingsOption<SwipeAction>[] {
-  return SWIPE_ACTIONS.map((value) => ({ value, label: swipeActionLabel(value, type) }));
+  // Anime has no volumes.
+  const actions = type === 'MANGA' ? SWIPE_ACTIONS : SWIPE_ACTIONS.filter((a) => a !== 'incrementVolume');
+  return actions.map((value) => ({ value, label: swipeActionLabel(value, type) }));
 }
 
 /** "Gesture Settings": per media type swipe actions with live previews. */

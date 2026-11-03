@@ -78,7 +78,8 @@ export function SegmentedSwitch<T extends string>({
   );
 }
 
-const MEDIA_SEGMENTS: readonly Segment<MediaType>[] = [
+/** "Anime | Manga" segments (also used by the native pickers). */
+export const MEDIA_TYPE_SEGMENTS: readonly Segment<MediaType>[] = [
   { value: 'ANIME', label: MEDIA_TYPE_LABELS.ANIME },
   { value: 'MANGA', label: MEDIA_TYPE_LABELS.MANGA },
 ];
@@ -87,7 +88,7 @@ export type MediaTypeSwitchProps = Omit<SegmentedSwitchProps<MediaType>, 'segmen
 
 /** "Anime | Manga" switch. */
 export function MediaTypeSwitch(props: MediaTypeSwitchProps) {
-  return <SegmentedSwitch segments={MEDIA_SEGMENTS} {...props} />;
+  return <SegmentedSwitch segments={MEDIA_TYPE_SEGMENTS} {...props} />;
 }
 
 const styles = StyleSheet.create({

@@ -21,8 +21,8 @@ function reportError(error: unknown) {
 
 /**
  * Row actions shared by the swipe gestures and menus: "+1 Episode/Chapter" (optimistic, asks
- * before auto-completing at the last unit), "Custom List" (opens the toggle sheet) and
- * "Delete" (confirmed).
+ * before auto-completing at the last unit), "+1 Volume" (manga), "Custom List" (opens the
+ * toggle sheet) and "Delete" (confirmed).
  */
 export function useEntryActions(type: MediaType, customListCount: number) {
   const increment = useIncrementProgress();
@@ -65,6 +65,16 @@ export function useEntryActions(type: MediaType, customListCount: number) {
     runIncrement(entry, false);
   };
 
+  // Volumes never auto-complete the entry; chapters decide that.
+  const incrementVolume = (entry: ListEntry) => {
+    const total = entry.media.volumes;
+    if (total != null && total > 0 && (entry.progressVolumes ?? 0) >= total) {
+      toast('Already at the last volume');
+      return;
+    }
+    increment.mutateAsync({ entry, media: entry.media, options: { volumes: true } }).catch(reportError);
+  };
+
   const deleteEntry = (entry: ListEntry) => {
     Alert.alert('Delete Entry', `Remove ${titleOf(entry)} from your list?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -102,6 +112,10 @@ export function useEntryActions(type: MediaType, customListCount: number) {
 
   const run = (action: SwipeAction, entry: ListEntry) => {
     if (action === 'increment') incrementEntry(entry);
+    else if (action === 'incrementVolume') {
+      if (type === 'MANGA') incrementVolume(entry);
+      else incrementEntry(entry);
+    }
     else if (action === 'customList') openCustomLists(entry);
     else deleteEntry(entry);
   };

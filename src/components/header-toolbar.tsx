@@ -6,7 +6,8 @@ import type { MediaType } from '@/settings/types';
 import type { IconName } from './icon';
 import { IconButton } from './icon-button';
 import { SearchField, type SearchFieldProps } from './search-field';
-import { MediaTypeSwitch } from './segmented-switch';
+import { NativeSegmentedPicker } from './segmented-picker/native-segmented-picker';
+import { MEDIA_TYPE_SEGMENTS } from './segmented-switch';
 
 export type HeaderToolbarProps = {
   /**
@@ -59,7 +60,13 @@ export function HeaderToolbar({
       )}
       <SearchField {...search} />
       {mediaType && onMediaTypeChange ? (
-        <MediaTypeSwitch value={mediaType} onChange={onMediaTypeChange} disabled={mediaTypeDisabled} />
+        <NativeSegmentedPicker
+          segments={MEDIA_TYPE_SEGMENTS}
+          value={mediaType}
+          onChange={onMediaTypeChange}
+          disabled={mediaTypeDisabled}
+          style={styles.mediaType}
+        />
       ) : null}
       {trailing}
     </View>
@@ -68,4 +75,5 @@ export function HeaderToolbar({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
+  mediaType: { width: 140 },
 });

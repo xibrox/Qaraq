@@ -32,13 +32,26 @@ export const ACCENT_HEX: Record<AccentColor, string> = {
   purple: '#B48CF2',
 };
 
-/** Base colour of each theme background (also used for the Theme menu swatches). */
+/** Base colour of each theme background. */
 export const BACKGROUND_HEX: Record<ResolvedBackground, string> = {
   black: '#000000',
   darkGray: '#161618',
   navy: '#0B1622',
   maroon: '#1A0B0E',
   purple: '#140F1F',
+  light: '#FFFFFF',
+};
+
+/**
+ * Theme menu swatches: lighter versions of each background's tint. The real backgrounds are all
+ * near-black, so swatches in their exact colours were impossible to tell apart.
+ */
+export const BACKGROUND_SWATCH_HEX: Record<ResolvedBackground, string> = {
+  black: '#000000',
+  darkGray: '#636366',
+  navy: '#2E5C99',
+  maroon: '#8E2D3B',
+  purple: '#6E4FB0',
   light: '#FFFFFF',
 };
 

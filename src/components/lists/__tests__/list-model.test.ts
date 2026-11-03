@@ -4,7 +4,20 @@ import { describe, expect, test } from 'bun:test';
 import type { MediaCore, MediaListCollectionQuery, MediaListEntry } from '@/api/types';
 
 import { stepScore, withProgress, withStatus, draftFromEntry, draftToVariables, averageAdvanced } from '../editor/editor-model';
-import { airingCountdown, airingLine, customListNames, filterEntries, groupSections, humanizeIn, sortEntries, type ListEntry } from '../list-model';
+import {
+  airingCountdown,
+  airingLine,
+  applyVisibleOrder,
+  customListNames,
+  filterEntries,
+  groupByStatus,
+  groupSections,
+  humanizeIn,
+  moveItems,
+  sortEntries,
+  uniqueEntries,
+  type ListEntry,
+} from '../list-model';
 
 function media(id: number, patch: Partial<MediaCore> = {}): MediaCore {
   return {
@@ -163,5 +176,34 @@ describe('editor model', () => {
   });
   test('advanced average ignores unset categories', () => {
     expect(averageAdvanced({ Story: 8, Art: 9, Sound: 0 }, ['Story', 'Art', 'Sound'], 'POINT_10_DECIMAL')).toBe(8.5);
+  });
+});
+
+describe('section reordering', () => {
+  test('moveItems follows SwiftUI onMove offsets (destination counted before removal)', () => {
+    expect(moveItems(['a', 'b', 'c', 'd'], [0], 3)).toEqual(['b', 'c', 'a', 'd']);
+    expect(moveItems(['a', 'b', 'c', 'd'], [0], 4)).toEqual(['b', 'c', 'd', 'a']);
+    expect(moveItems(['a', 'b', 'c', 'd'], [3], 0)).toEqual(['d', 'a', 'b', 'c']);
+    expect(moveItems(['a', 'b', 'c', 'd'], [1, 2], 0)).toEqual(['b', 'c', 'a', 'd']);
+    expect(moveItems(['a', 'b', 'c'], [1], 1)).toEqual(['a', 'b', 'c']);
+  });
+  test('applyVisibleOrder keeps hidden sections in their slots', () => {
+    const order = ['CURRENT', 'REPEATING', 'COMPLETED', 'custom:Fav'] as const;
+    expect(applyVisibleOrder([...order], ['custom:Fav', 'CURRENT', 'COMPLETED'])).toEqual(['custom:Fav', 'REPEATING', 'CURRENT', 'COMPLETED']);
+  });
+});
+
+describe('custom list as its own list', () => {
+  test('groupByStatus splits entries by their own status', () => {
+    const grouped = groupByStatus([entry(1), entry(2, { status: 'PLANNING' }), entry(3)]);
+    expect(grouped.get('CURRENT')?.map((e) => e.id)).toEqual([1, 3]);
+    expect(grouped.get('PLANNING')?.map((e) => e.id)).toEqual([2]);
+    expect(grouped.get('COMPLETED')).toBeUndefined();
+  });
+});
+
+describe('search across a list', () => {
+  test('uniqueEntries keeps the first of each entry id', () => {
+    expect(uniqueEntries([entry(1), entry(2), entry(1, { status: 'PLANNING' })]).map((e) => e.status)).toEqual(['CURRENT', 'CURRENT']);
   });
 });

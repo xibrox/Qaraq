@@ -8,7 +8,7 @@ import { AppText } from '@/components/app-text';
 import { ErrorState } from '@/components/error-state';
 import { icons } from '@/components/icon';
 import { LoadingState } from '@/components/loading-state';
-import { SegmentedSwitch } from '@/components/segmented-switch';
+import { NativeSegmentedPicker } from '@/components/segmented-picker/native-segmented-picker';
 import { formatFuzzyDate } from '@/lib/format';
 import { pickName } from '@/lib/title';
 
@@ -139,8 +139,7 @@ export function StaffDetailScreen({ id }: { id: number }) {
       />
       <RichDescription html={staff.description} />
       {showSwitch ? (
-        <SegmentedSwitch
-          size="md"
+        <NativeSegmentedPicker
           segments={[
             { value: 'characters', label: 'Characters' },
             { value: 'staff', label: 'Staff Roles' },
@@ -204,6 +203,6 @@ export function StaffDetailScreen({ id }: { id: number }) {
 
 const styles = StyleSheet.create({
   header: { gap: 16, paddingBottom: 4 },
-  switch: { alignSelf: 'flex-start', marginTop: 4 },
+  switch: { width: 240, marginTop: 4 },
   toolbar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

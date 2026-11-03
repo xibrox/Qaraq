@@ -99,6 +99,8 @@ export function swipeActionLabel(action: SwipeAction, type: MediaType): string {
   switch (action) {
     case 'increment':
       return type === 'MANGA' ? 'Increase Chapter' : 'Increase Episode';
+    case 'incrementVolume':
+      return 'Increase Volume';
     case 'customList':
       return 'Custom List';
     case 'delete':

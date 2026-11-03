@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import { GlassSurface } from '@/components/glass-surface';
 import { Icon } from '@/components/icon';
 import { NativeMenu, choiceItems } from '@/components/menu/native-menu';
 import type { MediaType } from '@/api/types';
@@ -28,17 +29,19 @@ export function ListInfoRow({ type, count }: ListInfoRowProps) {
 
   return (
     <View style={styles.row}>
-      <View style={[styles.count, { backgroundColor: c.chipFill, borderRadius: theme.radii.md }]}>
+      <GlassSurface radius="pill" fallbackColor={c.chipFill} style={styles.count}>
         <AppText variant="subheadline" weight="700" accessibilityLabel={`${count} entries`}>
           {String(count)}
         </AppText>
-      </View>
+      </GlassSurface>
       <View style={styles.spacer} />
       <NativeMenu title="Sort By" items={choiceItems(options, sort.field, (field) => setListSort(type, { ...sort, field }))}>
-        <View style={[styles.pill, { backgroundColor: c.chipFill, borderRadius: theme.radii.lg }]} accessibilityRole="button">
-          <Icon name={listIcons.sortPill} size={13} color={c.text} />
-          <AppText variant="chip">{LIST_SORT_FIELD_LABELS[sort.field]}</AppText>
-        </View>
+        <GlassSurface radius="pill" interactive fallbackColor={c.chipFill} style={styles.pill}>
+          <View style={styles.pillInner} accessibilityRole="button">
+            <Icon name={listIcons.sortPill} size={13} color={c.text} />
+            <AppText variant="chip">{LIST_SORT_FIELD_LABELS[sort.field]}</AppText>
+          </View>
+        </GlassSurface>
       </NativeMenu>
       <Pressable
         onPress={() => {
@@ -48,9 +51,11 @@ export function ListInfoRow({ type, count }: ListInfoRowProps) {
         accessibilityRole="button"
         accessibilityLabel={desc ? 'Sorted descending' : 'Sorted ascending'}
         hitSlop={4}
-        style={({ pressed }) => [styles.direction, { backgroundColor: c.chipFill, opacity: pressed ? 0.6 : 1 }]}>
-        <Icon name={listIcons.bars} size={14} color={c.text} />
-        <Icon name={desc ? listIcons.arrowDown : listIcons.arrowUp} size={11} color={c.text} />
+        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+        <GlassSurface radius="pill" interactive fallbackColor={c.chipFill} style={styles.direction}>
+          <Icon name={listIcons.bars} size={14} color={c.text} />
+          <Icon name={desc ? listIcons.arrowDown : listIcons.arrowUp} size={11} color={c.text} />
+        </GlassSurface>
       </Pressable>
     </View>
   );
@@ -58,8 +63,9 @@ export function ListInfoRow({ type, count }: ListInfoRowProps) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
-  count: { minWidth: 36, height: 32, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
+  count: { minWidth: 36, height: 36, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   spacer: { flex: 1 },
-  pill: { height: 36, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  direction: { width: 36, height: 36, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1 },
+  pill: { height: 36, justifyContent: 'center' },
+  pillInner: { paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  direction: { width: 36, height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1 },
 });

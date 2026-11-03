@@ -14,7 +14,7 @@ import {
   SettingsSection,
 } from '@/components/settings';
 import { confirm } from '@/components/settings/confirm';
-import { QaraqHeaderCard } from '@/components/settings/qaraq-header-card';
+import { AccountRow } from '@/components/settings/account-row';
 import { settingsIcons } from '@/components/settings/settings-icons';
 import { toast } from '@/components/toast';
 import { hrefs } from '@/navigation/hrefs';
@@ -50,20 +50,17 @@ async function confirmSignOut() {
   toast('Signed out');
 }
 
-/** "Settings" root. AniClient's PRO banner becomes the Qaraq card: everything is free. */
+/** "Settings" root, laid out like the iPhone Settings app: account row first, Sign Out at the end. */
 export default function SettingsScreen() {
   const signedIn = useIsSignedIn();
   const { data: viewer } = useViewer({ enabled: signedIn });
   const user = signedIn && viewer ? { name: viewer.name, avatarUrl: viewer.avatar?.medium ?? viewer.avatar?.large } : null;
 
   return (
-    <SettingsForm footer={`v${VERSION}`}>
+    <SettingsForm footer={`Qaraq ${VERSION}`}>
       <SettingsSection>
-        <SettingsCustomRow bare>
-          <QaraqHeaderCard
-            user={user}
-            onPress={() => router.push(signedIn ? hrefs.tab('profile') : hrefs.signIn())}
-          />
+        <SettingsCustomRow>
+          <AccountRow user={user} onPress={() => router.push(signedIn ? hrefs.tab('profile') : hrefs.signIn())} />
         </SettingsCustomRow>
       </SettingsSection>
 
@@ -84,9 +81,9 @@ export default function SettingsScreen() {
 
       <SettingsSection>
         {signedIn ? (
-          <SettingsDestructiveRow title="Sign Out" icon={settingsIcons.signOut} onPress={() => void confirmSignOut()} />
+          <SettingsDestructiveRow title="Sign Out" align="center" onPress={() => void confirmSignOut()} />
         ) : (
-          <SettingsButtonRow title="Sign In" icon={settingsIcons.signIn} onPress={() => router.push(hrefs.signIn())} />
+          <SettingsButtonRow title="Sign In" align="center" onPress={() => router.push(hrefs.signIn())} />
         )}
       </SettingsSection>
     </SettingsForm>
